@@ -3,3 +3,6 @@ datasets/all_datasets
 output/
 output1/
 lpclip/clip_feat/
+datasets/__pycache__
+clip/__pycache__
+trainers/__pycache__
