@@ -3,14 +3,14 @@
 #cd ../..
 
 # custom config
-DATA="/path/to/dataset/folder"
+DATA="/home/vis-comp/24m2119/multimodal-prompt-learning/datasets/all_datasets"
 TRAINER=MaPLe
 
 DATASET=$1
 SEED=$2
 
 CFG=vit_b16_c2_ep5_batch4_2ctx
-SHOTS=16
+SHOTS=1
 LOADEP=5
 SUB=new
 

@@ -1,1 +1,5 @@
 Dassl/
+datasets/all_datasets
+output/
+output1/
+lpclip/clip_feat/

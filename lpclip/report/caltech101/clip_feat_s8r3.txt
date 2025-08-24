@@ -1,0 +1,7 @@
+Caltech101, 1 Shot, Test acc stat: 69.61 (1.84)
+Caltech101, 2 Shot, Test acc stat: 78.57 (0.48)
+CUB200, 1 Shot, Test acc stat: 23.74 (1.03)
+CUB200, 2 Shot, Test acc stat: 34.75 (0.15)
+CUB200, 4 Shot, Test acc stat: 46.29 (0.23)
+CUB200, 8 Shot, Test acc stat: 55.84 (0.93)
+CUB200, 16 Shot, Test acc stat: 64.53 (0.69)

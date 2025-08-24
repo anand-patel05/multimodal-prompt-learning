@@ -3,7 +3,7 @@
 #cd ../..
 
 # custom config
-DATA=/path/to/datasets
+DATA="/home/vis-comp/24m2119/multimodal-prompt-learning/datasets/all_datasets"
 TRAINER=CoOp
 
 DATASET=$1

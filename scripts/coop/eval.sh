@@ -3,11 +3,12 @@
 #cd ../..
 
 # custom config
-DATA=/path/to/datasets
+DATA="/home/vis-comp/24m2119/multimodal-prompt-learning/datasets/all_datasets"
 TRAINER=CoOp
-SHOTS=16
+
+SHOTS=1
 NCTX=16
-CSC=False
+CSC=True
 CTP=end
 
 DATASET=$1
@@ -22,7 +23,7 @@ do
     --dataset-config-file configs/datasets/${DATASET}.yaml \
     --config-file configs/trainers/${TRAINER}/${CFG}.yaml \
     --output-dir output/evaluation/${TRAINER}/${CFG}_${SHOTS}shots/nctx${NCTX}_csc${CSC}_ctp${CTP}/${DATASET}/seed${SEED} \
-    --model-dir output/imagenet/${TRAINER}/${CFG}_${SHOTS}shots/nctx${NCTX}_csc${CSC}_ctp${CTP}/seed${SEED} \
+    --model-dir output/${DATASET}/${TRAINER}/${CFG}_${SHOTS}shots/nctx${NCTX}_csc${CSC}_ctp${CTP}/seed${SEED} \
     --load-epoch 50 \
     --eval-only \
     TRAINER.COOP.N_CTX ${NCTX} \

@@ -3,7 +3,7 @@
 #cd ../..
 
 # custom config
-DATA=/path/to/datasets
+DATA="/home/vis-comp/24m2119/multimodal-prompt-learning/datasets/all_datasets"
 TRAINER=ZeroshotCLIP
 DATASET=$1
 CFG=$2  # rn50, rn101, vit_b32 or vit_b16

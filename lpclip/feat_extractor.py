@@ -20,6 +20,7 @@ from datasets.imagenetv2 import ImageNetV2
 from datasets.imagenet_sketch import ImageNetSketch
 from datasets.imagenet_a import ImageNetA
 from datasets.imagenet_r import ImageNetR
+from datasets.cub200 import CUB200
 
 from dassl.utils import setup_logger, set_random_seed, collect_env_info
 from dassl.config import get_cfg_default
@@ -80,6 +81,7 @@ def extend_cfg(cfg):
     cfg.TRAINER.OURS.CSC = False  # class-specific context
     cfg.TRAINER.OURS.CTX_INIT = ""  # initialize context vectors with given words
     cfg.TRAINER.OURS.WEIGHT_U = 0.1  # weight for the unsupervised loss
+    cfg.DATASET.SUBSAMPLE_CLASSES = "all"
 
 
 def setup_cfg(args):

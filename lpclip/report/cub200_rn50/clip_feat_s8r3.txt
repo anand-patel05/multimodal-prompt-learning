@@ -1,0 +1,5 @@
+CUB200, 1 Shot, Test acc stat: 23.74 (0.98)
+CUB200, 2 Shot, Test acc stat: 34.74 (0.16)
+CUB200, 4 Shot, Test acc stat: 46.37 (0.33)
+CUB200, 8 Shot, Test acc stat: 55.59 (0.56)
+CUB200, 16 Shot, Test acc stat: 64.78 (0.46)

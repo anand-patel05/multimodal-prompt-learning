@@ -34,7 +34,7 @@ def load_clip_to_cpu(cfg):
                       "vision_depth": 0,
                       "language_depth": 0, "vision_ctx": 0,
                       "language_ctx": 0,
-                      "maple_length": cfg.TRAINER.MAPLE.N_CTX}
+                      "maple_length": cfg.TRAINER.MAPLE.N_CTX}            # new
     model = clip.build_model(state_dict or model.state_dict(), design_details)
 
     return model
@@ -54,7 +54,7 @@ class TextEncoder(nn.Module):
         x = x.permute(1, 0, 2)  # NLD -> LND
         # Pass as the list, as nn.sequential cannot process multiple arguments in the forward pass
         combined = [x, compound_prompts_deeper_text, 0]  # third argument is the counter which denotes depth of prompt
-        outputs = self.transformer(combined)
+        outputs = self.transformer(combined)          # new
         x = outputs[0]  # extract the x back from here
         x = x.permute(1, 0, 2)  # LND -> NLD
         x = self.ln_final(x).type(self.dtype)
@@ -77,7 +77,7 @@ class MultiModalPromptLearner(nn.Module):
         clip_imsize = clip_model.visual.input_resolution
         cfg_imsize = cfg.INPUT.SIZE[0]
         # Default is 1, which is compound shallow prompting
-        assert cfg.TRAINER.MAPLE.PROMPT_DEPTH >= 1, "For MaPLe, PROMPT_DEPTH should be >= 1"
+        assert cfg.TRAINER.MAPLE.PROMPT_DEPTH >= 1, "For MaPLe, PROMPT_DEPTH should be >= 1"       # new
         self.compound_prompts_depth = cfg.TRAINER.MAPLE.PROMPT_DEPTH  # max=12, but will create 11 such shared prompts
         assert cfg_imsize == clip_imsize, f"cfg_imsize ({cfg_imsize}) must equal to clip_imsize ({clip_imsize})"
 
@@ -106,9 +106,9 @@ class MultiModalPromptLearner(nn.Module):
         # These below parameters related to the shared prompts
         # Define the compound prompts for the deeper layers
 
-        # Minimum can be 1, which defaults to shallow MaPLe
+        # Minimum can be 1, which defaults to shallow MaPLe     # new
         # compound prompts
-        self.compound_prompts_text = nn.ParameterList([nn.Parameter(torch.empty(n_ctx, 512))
+        self.compound_prompts_text = nn.ParameterList([nn.Parameter(torch.empty(n_ctx, 512))          
                                                       for _ in range(self.compound_prompts_depth - 1)])
         for single_para in self.compound_prompts_text:
             nn.init.normal_(single_para, std=0.02)
@@ -190,7 +190,7 @@ class CustomCLIP(nn.Module):
         tokenized_prompts = self.tokenized_prompts
         logit_scale = self.logit_scale.exp()
 
-        prompts, shared_ctx, deep_compound_prompts_text, deep_compound_prompts_vision = self.prompt_learner()
+        prompts, shared_ctx, deep_compound_prompts_text, deep_compound_prompts_vision = self.prompt_learner()     # new Imp
         text_features = self.text_encoder(prompts, tokenized_prompts, deep_compound_prompts_text)
         image_features = self.image_encoder(image.type(self.dtype), shared_ctx, deep_compound_prompts_vision)
 

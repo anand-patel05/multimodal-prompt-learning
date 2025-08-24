@@ -3,16 +3,16 @@
 #cd ../..
 
 # custom config
-DATA="/path/to/dataset/folder"
+DATA="/home/vis-comp/24m2119/multimodal-prompt-learning/datasets/all_datasets"
 TRAINER=CoCoOp
 
 DATASET=$1
 SEED=$2
 
 CFG=vit_b16_c4_ep10_batch1_ctxv1
-SHOTS=16
+SHOTS=1
 LOADEP=10
-SUB=new
+SUB=all                    # subsample in ["all", "base", "new"]       test --> new
 
 
 COMMON_DIR=${DATASET}/shots_${SHOTS}/${TRAINER}/${CFG}/seed${SEED}

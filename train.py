@@ -17,6 +17,7 @@ import datasets.sun397
 import datasets.caltech101
 import datasets.ucf101
 import datasets.imagenet
+import datasets.cub200
 
 import datasets.imagenet_sketch
 import datasets.imagenetv2
@@ -29,6 +30,7 @@ import trainers.zsclip
 import trainers.maple
 import trainers.independentVL
 import trainers.vpt
+import trainers.promptsrc
 
 def print_args(args, cfg):
     print("***************")
@@ -107,6 +109,20 @@ def extend_cfg(cfg):
     cfg.TRAINER.MAPLE.CTX_INIT = "a photo of a"  # initialization words
     cfg.TRAINER.MAPLE.PREC = "fp16"  # fp16, fp32, amp
     cfg.TRAINER.MAPLE.PROMPT_DEPTH = 9 # Max 12, minimum 0, for 1 it will act as shallow MaPLe (J=1)
+    cfg.DATASET.SUBSAMPLE_CLASSES = "all"  # all, base or new
+
+    # Config for PromptSRC
+    cfg.TRAINER.PROMPTSRC = CN()
+    cfg.TRAINER.PROMPTSRC.N_CTX_VISION = 4  # number of context vectors at the vision branch
+    cfg.TRAINER.PROMPTSRC.N_CTX_TEXT = 4  # number of context vectors at the language branch
+    cfg.TRAINER.PROMPTSRC.CTX_INIT = "a photo of a"  # initialization words
+    cfg.TRAINER.PROMPTSRC.PREC = "fp16"  # fp16, fp32, amp
+    cfg.TRAINER.PROMPTSRC.PROMPT_DEPTH_VISION = 9  # Max 12, minimum 0, for 0 it will be using shallow IVLP prompting (J=1)
+    cfg.TRAINER.PROMPTSRC.PROMPT_DEPTH_TEXT = 9  # Max 12, minimum 0, for 0 it will be using shallow IVLP prompting (J=1)
+    cfg.TRAINER.PROMPTSRC.TEXT_LOSS_WEIGHT = 25
+    cfg.TRAINER.PROMPTSRC.IMAGE_LOSS_WEIGHT = 10
+    cfg.TRAINER.PROMPTSRC.GPA_MEAN = 15
+    cfg.TRAINER.PROMPTSRC.GPA_STD = 1
     cfg.DATASET.SUBSAMPLE_CLASSES = "all"  # all, base or new
 
     # Config for independent Vision Language prompting (independent-vlp)

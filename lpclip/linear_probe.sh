@@ -1,6 +1,6 @@
-feature_dir=clip_feat
+feature_dir='clip_feat'
 
-for DATASET in OxfordPets
+for DATASET in CUB200
 do
     python linear_probe.py \
     --dataset ${DATASET} \

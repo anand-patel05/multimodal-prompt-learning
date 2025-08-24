@@ -3,15 +3,15 @@
 #cd ../..
 
 # custom config
-DATA="/path/to/dataset/folder"
+DATA="/home/vis-comp/24m2119/multimodal-prompt-learning/datasets/all_datasets"
 TRAINER=MaPLe
 
 DATASET=$1
 SEED=$2
 
 CFG=vit_b16_c2_ep5_batch4_2ctx
-SHOTS=16
-
+SHOTS=$3
+SUB=all             # subsample in ["all", "base", "new"]       train --> base
 
 DIR=output/base2new/train_base/${DATASET}/shots_${SHOTS}/${TRAINER}/${CFG}/seed${SEED}
 if [ -d "$DIR" ]; then
@@ -24,7 +24,7 @@ if [ -d "$DIR" ]; then
     --config-file configs/trainers/${TRAINER}/${CFG}.yaml \
     --output-dir ${DIR} \
     DATASET.NUM_SHOTS ${SHOTS} \
-    DATASET.SUBSAMPLE_CLASSES base
+    DATASET.SUBSAMPLE_CLASSES ${SUB}
 else
     echo "Run this job and save the output to ${DIR}"
     python train.py \
@@ -35,5 +35,5 @@ else
     --config-file configs/trainers/${TRAINER}/${CFG}.yaml \
     --output-dir ${DIR} \
     DATASET.NUM_SHOTS ${SHOTS} \
-    DATASET.SUBSAMPLE_CLASSES base
+    DATASET.SUBSAMPLE_CLASSES ${SUB}
 fi
