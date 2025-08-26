@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=lpclip_cub200
+#SBATCH --job-name=dapt_cub200
 #SBATCH --partition=l40
 #SBATCH --qos=l40
 #SBATCH --nodes=1
@@ -40,3 +40,25 @@ cd /home/vis-comp/24m2119/multimodal-prompt-learning
 # PromptSRC
 # train and test on given dataset for K=1 shot over 3 seeds
 # bash scripts/promptsrc/few_shot.sh cub200 4                      # dataset shots
+
+# PLOT
+# bash scripts/plot/main.sh caltech101 4                                 # dataset no_of_prompts
+# --> Rn50
+# cd /home/vis-comp/24m2119/PLOT/plot-coop/scripts
+# bash main.sh cub200 4 
+# --> ViT
+# cd /home/vis-comp/24m2119/PLOT/plot-pp/scripts
+# bash main_visiononly.sh cub200 4
+# bash main_joint.sh cub200 4
+# bash evaluation.sh cub200 4
+
+# DAPT
+# cd /home/vis-comp/24m2119/DAPT/
+# bash scripts/gen_prototype.sh 0
+# bash scripts/main.sh cub200 0            # dataset gpu_id
+
+# DePT
+
+
+
+
