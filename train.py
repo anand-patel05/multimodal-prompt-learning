@@ -1,5 +1,9 @@
 import argparse
 import torch
+import time
+import os
+import numpy as np
+import random 
 
 from dassl.utils import setup_logger, set_random_seed, collect_env_info
 from dassl.config import get_cfg_default
@@ -31,6 +35,9 @@ import trainers.maple
 import trainers.independentVL
 import trainers.vpt
 import trainers.promptsrc
+import trainers.tcp
+import prompting_lasp.lasp
+import trainers.rpo
 
 def print_args(args, cfg):
     print("***************")
@@ -115,6 +122,9 @@ def extend_cfg(cfg):
     cfg.TRAINER.PROMPTSRC = CN()
     cfg.TRAINER.PROMPTSRC.N_CTX_VISION = 4  # number of context vectors at the vision branch
     cfg.TRAINER.PROMPTSRC.N_CTX_TEXT = 4  # number of context vectors at the language branch
+    cfg.TRAINER.PROMPTSRC.N_CTX_PREFIX  = 4
+    cfg.TRAINER.PROMPTSRC.N_CTX_SUFFIX = 4
+    cfg.TRAINER.PROMPTSRC.N_CTX_ATTR = 3
     cfg.TRAINER.PROMPTSRC.CTX_INIT = "a photo of a"  # initialization words
     cfg.TRAINER.PROMPTSRC.PREC = "fp16"  # fp16, fp32, amp
     cfg.TRAINER.PROMPTSRC.PROMPT_DEPTH_VISION = 9  # Max 12, minimum 0, for 0 it will be using shallow IVLP prompting (J=1)
@@ -143,6 +153,31 @@ def extend_cfg(cfg):
     cfg.TRAINER.VPT.PREC = "fp16"  # fp16, fp32, amp
     cfg.TRAINER.VPT.PROMPT_DEPTH_VISION = 1  # if set to 1, will represent shallow vision prompting only
     cfg.DATASET.SUBSAMPLE_CLASSES = "all"  # all, base or new
+
+    # Config for LASP
+    cfg.DATASET.INCLUDE_ALL_CLASSES = False
+
+    ##### ------ UniversalOP ------- ######
+    cfg.TRAINER.LASP = CN()
+    cfg.TRAINER.LASP.ENABLE = True # LARS loss
+    cfg.TRAINER.LASP.LASP_PROMPTS = ['a photo of {}'] # List of textual prompts for LARS
+    cfg.TRAINER.LASP.LASP_LOSS_WEIGHT = 1.0 # weighf of LARS text-to-text loss
+    cfg.TRAINER.LASP.N_CTX = 16  # number of context vectors
+    cfg.TRAINER.LASP.CTX_INIT = ""  # initialization words
+    cfg.TRAINER.LASP.PREC = "amp"  # fp16, fp32, amp
+
+    cfg.TRAINER.LASP.ENABLE_CORRECTION = False
+    cfg.TRAINER.LASP.ENABLE_IMPLICIT_OP = 'sum' # mul
+    cfg.TRAINER.LASP.PRETRAINED_PROMPTS_DIR = None
+    cfg.TRAINER.LASP.TRAIN_W = True
+    cfg.TRAINER.LASP.FINETUNE_VIT_LN = True
+
+    # Config for RPO
+    cfg.TRAINER.RPO = CN()
+    cfg.TRAINER.RPO.K = 1
+    cfg.TRAINER.RPO.CTX_INIT = ''
+    cfg.TRAINER.RPO.PREC = 'fp16'
+    cfg.DATASET.PROMPT = "a photo of a _."
 
 
 def setup_cfg(args):

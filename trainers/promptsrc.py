@@ -69,45 +69,270 @@ class TextEncoder(nn.Module):
         return x
 
 
+# class VLPromptLearner(nn.Module):
+#     def __init__(self, cfg, classnames, clip_model):
+#         super().__init__()
+#         n_cls = len(classnames)
+#         # Make sure Language depth >= 1
+#         assert cfg.TRAINER.PROMPTSRC.PROMPT_DEPTH_TEXT >= 1, "In Independent VL prompting, Language prompt depth should be >=1" \
+#                                                         "\nPlease use VPT trainer if you want to learn only vision " \
+#                                                         "branch"
+#         n_ctx = cfg.TRAINER.PROMPTSRC.N_CTX_TEXT
+#         ctx_init = cfg.TRAINER.PROMPTSRC.CTX_INIT
+#         dtype = clip_model.dtype
+#         ctx_dim = clip_model.ln_final.weight.shape[0]
+#         clip_imsize = clip_model.visual.input_resolution
+#         cfg_imsize = cfg.INPUT.SIZE[0]
+#         assert cfg_imsize == clip_imsize, f"cfg_imsize ({cfg_imsize}) must equal to clip_imsize ({clip_imsize})"
+
+#         if ctx_init and n_ctx <= 4:
+#             # use given words to initialize context vectors
+#             ctx_init = ctx_init.replace("_", " ")
+#             n_ctx = n_ctx
+#             prompt = clip.tokenize(ctx_init)
+#             with torch.no_grad():
+#                 embedding = clip_model.token_embedding(prompt).type(dtype)
+#             ctx_vectors = embedding[0, 1: 1 + n_ctx, :]
+#             prompt_prefix = ctx_init
+#         else:
+#             # random initialization
+#             ctx_vectors = torch.empty(n_ctx, ctx_dim, dtype=dtype)
+#             nn.init.normal_(ctx_vectors, std=0.02)
+#             prompt_prefix = " ".join(["X"] * n_ctx)
+#         print(f"Independent V-L design")
+#         print(f'Initial text context: "{prompt_prefix}"')
+#         print(f"Number of context words (tokens) for Language prompting: {n_ctx}")
+#         print(f"Number of context words (tokens) for Vision prompting: {cfg.TRAINER.PROMPTSRC.N_CTX_VISION}")
+#         self.ctx = nn.Parameter(ctx_vectors)
+
+#         classnames = [name.replace("_", " ") for name in classnames]
+#         name_lens = [len(_tokenizer.encode(name)) for name in classnames]
+#         prompts = [prompt_prefix + " " + name + "." for name in classnames]
+
+#         tokenized_prompts = torch.cat([clip.tokenize(p) for p in prompts])  # (n_cls, n_tkn)
+#         # Also create frozen CLIP
+#         clip_model_temp = load_clip_to_cpu(cfg, True).float().cuda()
+#         clip_model_temp_image = load_clip_to_cpu(cfg, True)
+#         with torch.no_grad():
+#             embedding = clip_model.token_embedding(tokenized_prompts).type(dtype)
+#             self.ZS_image_encoder = clip_model_temp_image.visual
+#             # Now pre-compute the frozen VL embeddings
+#             all_teacher_features = []
+#             # Using multiple text templates to ensure textual diversity during training
+#             for single_template in IMAGENET_TEMPLATES:
+#                 x = [single_template.replace("{}", name) for name in classnames]
+#                 x_tokenized = torch.cat([clip.tokenize(p) for p in x])
+#                 text_features = clip_model_temp.encode_text(x_tokenized.cuda())
+#                 all_teacher_features.append(text_features.unsqueeze(1))
+
+#         self.fixed_embeddings = torch.cat(all_teacher_features, dim=1).mean(dim=1)
+#         # These token vectors will be saved when in save_model(),
+#         # but they should be ignored in load_model() as we want to use
+#         # those computed using the current class names
+#         self.register_buffer("token_prefix", embedding[:, :1, :])  # SOS
+#         self.register_buffer("token_suffix", embedding[:, 1 + n_ctx:, :])  # CLS, EOS
+
+#         self.n_cls = n_cls
+#         self.n_ctx = n_ctx
+#         self.tokenized_prompts = tokenized_prompts  # torch.Tensor
+#         self.name_lens = name_lens
+
+#     def construct_prompts(self, ctx, prefix, suffix, label=None):
+#         # dim0 is either batch_size (during training) or n_cls (during testing)
+#         # ctx: context tokens, with shape of (dim0, n_ctx, ctx_dim)
+#         # prefix: the sos token, with shape of (n_cls, 1, ctx_dim)
+#         # suffix: remaining tokens, with shape of (n_cls, *, ctx_dim)
+
+#         if label is not None:
+#             prefix = prefix[label]
+#             suffix = suffix[label]
+
+#         prompts = torch.cat(
+#             [
+#                 prefix,  # (dim0, 1, dim)
+#                 ctx,  # (dim0, n_ctx, dim)
+#                 suffix,  # (dim0, *, dim)
+#             ],
+#             dim=1,
+#         )
+
+#         return prompts
+
+#     def forward(self):
+#         ctx = self.ctx
+#         if ctx.dim() == 2:
+#             ctx = ctx.unsqueeze(0).expand(self.n_cls, -1, -1)
+
+#         prefix = self.token_prefix
+#         suffix = self.token_suffix
+#         prompts = self.construct_prompts(ctx, prefix, suffix)
+
+#         return prompts
+
+# =========== modified version================
+# class VLPromptLearner(nn.Module):
+#     def __init__(self, cfg, classnames, clip_model):
+#         super().__init__()
+#         n_cls = len(classnames)
+#         # Make sure Language depth >= 1
+#         assert cfg.TRAINER.PROMPTSRC.PROMPT_DEPTH_TEXT >= 1, "In Independent VL prompting, Language prompt depth should be >=1" \
+#                                                         "\nPlease use VPT trainer if you want to learn only vision " \
+#                                                         "branch"
+#         n_ctx = cfg.TRAINER.PROMPTSRC.N_CTX_TEXT          # 4
+#         ctx_init = cfg.TRAINER.PROMPTSRC.CTX_INIT         # "a photo of a"
+#         dtype = clip_model.dtype
+#         ctx_dim = clip_model.ln_final.weight.shape[0]
+#         clip_imsize = clip_model.visual.input_resolution
+#         cfg_imsize = cfg.INPUT.SIZE[0]
+#         assert cfg_imsize == clip_imsize, f"cfg_imsize ({cfg_imsize}) must equal to clip_imsize ({clip_imsize})"
+
+#         if ctx_init and n_ctx <= 4:
+#             # use given words to initialize context vectors
+#             prompt_prefix = ctx_init.replace("_", " ")
+#             prompt_suffix = ", a bird having"
+#             n_ctx = n_ctx
+            
+#             prefix_tokens = clip.tokenize(prompt_prefix)
+#             suffix_tokens = clip.tokenize(prompt_suffix)
+            
+#             with torch.no_grad():
+#                 prefix_embed = clip_model.token_embedding(prefix_tokens).type(dtype)
+#                 suffix_embed = clip_model.token_embedding(suffix_tokens).type(dtype)
+            
+#             # ctx_vectors_start = embedding1[0, 1: 1 + n_ctx, :]
+#             # ctx_vectors_end = embedding2[0, 1:2 + n_ctx, :]
+#         else:
+#             # random initialization
+#             ctx_vectors = torch.empty(n_ctx, ctx_dim, dtype=dtype)
+#             nn.init.normal_(ctx_vectors, std=0.02)
+#             prompt_prefix = " ".join(["X"] * n_ctx)
+        
+#         print(f"Independent V-L design")
+#         print(f'Initial text context: "{prompt_prefix}"')
+#         print(f"Number of context words (tokens) for Language prompting: {n_ctx}")
+#         print(f"Number of context words (tokens) for Vision prompting: {cfg.TRAINER.PROMPTSRC.N_CTX_VISION}")
+#         # self.ctx_start = nn.Parameter(ctx_vectors_start)
+#         # self.ctx_end = nn.Parameter(ctx_vectors_end)
+        
+#         # Learnable context (for attribute slot "_____")
+#         self.ctx_attr = nn.Parameter(torch.empty(n_ctx, ctx_dim, dtype=dtype))
+#         nn.init.normal_(self.ctx_attr, std=0.02)
+
+#         classnames = [name.replace("_", " ") for name in classnames]
+#         name_lens = [len(_tokenizer.encode(name)) for name in classnames]
+#         # prompts = [prompt_prefix + " " + name + "." for name in classnames]
+#         prompts = [prompt_prefix + " " + name + prompt_suffix + " " + "_____" + "." for name in classnames]
+#         print(f"Prompts: {prompts}")
+
+#         tokenized_prompts = torch.cat([clip.tokenize(p) for p in prompts])  # (n_cls, n_tkn)
+#         # Also create frozen CLIP
+#         clip_model_temp = load_clip_to_cpu(cfg, True).float().cuda()
+#         clip_model_temp_image = load_clip_to_cpu(cfg, True)
+#         with torch.no_grad():
+#             embedding = clip_model.token_embedding(tokenized_prompts).type(dtype)
+#             self.ZS_image_encoder = clip_model_temp_image.visual
+#             # Now pre-compute the frozen VL embeddings
+#             all_teacher_features = []
+#             # Using multiple text templates to ensure textual diversity during training
+#             for single_template in IMAGENET_TEMPLATES:
+#                 x = [single_template.replace("{}", name) for name in classnames]
+#                 x_tokenized = torch.cat([clip.tokenize(p) for p in x])
+#                 text_features = clip_model_temp.encode_text(x_tokenized.cuda())
+#                 all_teacher_features.append(text_features.unsqueeze(1))
+
+#         self.fixed_embeddings = torch.cat(all_teacher_features, dim=1).mean(dim=1)
+#         # These token vectors will be saved when in save_model(),
+#         # but they should be ignored in load_model() as we want to use
+#         # those computed using the current class names
+        
+#         # self.register_buffer("token_prefix", embedding1[:, :1, :])  # SOS
+#         # self.register_buffer("token_middle", embedding2[:, 1:2 + n_ctx, :])  # attribute
+#         # self.register_buffer("token_suffix", embedding1[:, 1 + n_ctx:, :])  # CLS, EOS
+#         # Buffers for fixed tokens
+#         self.register_buffer("token_prefix", prefix_embed[:, :1, :])   # SOS
+#         self.register_buffer("token_prefix_rest", prefix_embed[:, 1:, :])
+#         self.register_buffer("token_suffix", suffix_embed[:, 1:, :])  # ", a bird having"
+
+#         self.n_cls = n_cls
+#         self.n_ctx = n_ctx
+#         self.tokenized_prompts = tokenized_prompts  # torch.Tensor
+#         self.name_lens = name_lens
+
+#     def construct_prompts(self, ctx, prefix, suffix, label=None):
+#         # dim0 is either batch_size (during training) or n_cls (during testing)
+#         # ctx: context tokens, with shape of (dim0, n_ctx, ctx_dim)
+#         # prefix: the sos token, with shape of (n_cls, 1, ctx_dim)
+#         # suffix: remaining tokens, with shape of (n_cls, *, ctx_dim)
+
+#         if label is not None:
+#             prefix = prefix[label]
+#             suffix = suffix[label]
+
+#         prompts = torch.cat(
+#             [
+#                 prefix,  # (dim0, 1, dim)
+#                 ctx,  # (dim0, n_ctx, dim)
+#                 suffix,  # (dim0, *, dim)
+#             ],
+#             dim=1,
+#         )
+
+#         return prompts
+
+#     def forward(self):
+#         ctx_start = self.ctx_start
+#         ctx_end = self.ctx_end
+#         if ctx.dim() == 2:
+#             ctx = ctx.unsqueeze(0).expand(self.n_cls, -1, -1)
+
+#         prefix = self.token_prefix
+#         middle = self.token_middle
+#         suffix = self.token_suffix
+#         prompts = self.construct_prompts(ctx_start, prefix, middle, suffix)
+
+#         return prompts
+
 class VLPromptLearner(nn.Module):
     def __init__(self, cfg, classnames, clip_model):
         super().__init__()
         n_cls = len(classnames)
-        # Make sure Language depth >= 1
-        assert cfg.TRAINER.PROMPTSRC.PROMPT_DEPTH_TEXT >= 1, "In Independent VL prompting, Language prompt depth should be >=1" \
-                                                        "\nPlease use VPT trainer if you want to learn only vision " \
-                                                        "branch"
         n_ctx = cfg.TRAINER.PROMPTSRC.N_CTX_TEXT
-        ctx_init = cfg.TRAINER.PROMPTSRC.CTX_INIT
+        ctx_init = cfg.TRAINER.PROMPTSRC.CTX_INIT 
+        n_ctx_prefix = cfg.TRAINER.PROMPTSRC.N_CTX_PREFIX  # e.g., 4
+        n_ctx_suffix = cfg.TRAINER.PROMPTSRC.N_CTX_SUFFIX  # e.g., 4
+        n_ctx_attr   = cfg.TRAINER.PROMPTSRC.N_CTX_ATTR    # e.g., 3
         dtype = clip_model.dtype
         ctx_dim = clip_model.ln_final.weight.shape[0]
-        clip_imsize = clip_model.visual.input_resolution
-        cfg_imsize = cfg.INPUT.SIZE[0]
-        assert cfg_imsize == clip_imsize, f"cfg_imsize ({cfg_imsize}) must equal to clip_imsize ({clip_imsize})"
 
-        if ctx_init and n_ctx <= 4:
-            # use given words to initialize context vectors
-            ctx_init = ctx_init.replace("_", " ")
-            n_ctx = n_ctx
-            prompt = clip.tokenize(ctx_init)
-            with torch.no_grad():
-                embedding = clip_model.token_embedding(prompt).type(dtype)
-            ctx_vectors = embedding[0, 1: 1 + n_ctx, :]
-            prompt_prefix = ctx_init
-        else:
-            # random initialization
-            ctx_vectors = torch.empty(n_ctx, ctx_dim, dtype=dtype)
-            nn.init.normal_(ctx_vectors, std=0.02)
-            prompt_prefix = " ".join(["X"] * n_ctx)
-        print(f"Independent V-L design")
-        print(f'Initial text context: "{prompt_prefix}"')
-        print(f"Number of context words (tokens) for Language prompting: {n_ctx}")
-        print(f"Number of context words (tokens) for Vision prompting: {cfg.TRAINER.PROMPTSRC.N_CTX_VISION}")
-        self.ctx = nn.Parameter(ctx_vectors)
+        prompt_prefix = ctx_init.replace("_", " ")
+        prompt_suffix = ", a bird having"
+        
+        # Learnable context parameters
+        self.ctx_prefix = nn.Parameter(torch.empty(n_ctx_prefix, ctx_dim, dtype=dtype))
+        self.ctx_suffix = nn.Parameter(torch.empty(n_ctx_suffix, ctx_dim, dtype=dtype))
+        self.ctx_attr   = nn.Parameter(torch.empty(n_ctx_attr, ctx_dim, dtype=dtype))
 
-        classnames = [name.replace("_", " ") for name in classnames]
-        name_lens = [len(_tokenizer.encode(name)) for name in classnames]
-        prompts = [prompt_prefix + " " + name + "." for name in classnames]
+        nn.init.normal_(self.ctx_prefix, std=0.02)
+        nn.init.normal_(self.ctx_suffix, std=0.02)
+        nn.init.normal_(self.ctx_attr, std=0.02)
+
+        # Buffers for SOS/EOS
+        sos_token = clip.tokenize("a")[0, :1]  # just to get SOS token index
+        eos_token = clip.tokenize("a")[0, -1:] # EOS token index
+        with torch.no_grad():
+            sos_embed = clip_model.token_embedding(sos_token).type(dtype)
+            eos_embed = clip_model.token_embedding(eos_token).type(dtype)
+
+        self.register_buffer("token_sos", sos_embed)
+        self.register_buffer("token_eos", eos_embed)
+
+        # Store classnames
+        self.classnames = [name.replace("_", " ") for name in classnames]
+        name_lens = [len(_tokenizer.encode(name)) for name in self.classnames]
+
+        # make prompts
+        prompts = [prompt_prefix + " " + name + prompt_suffix + " " + "_____" + "." for name in self.classnames]
+        print(f"Prompts: {prompts}")
 
         tokenized_prompts = torch.cat([clip.tokenize(p) for p in prompts])  # (n_cls, n_tkn)
         # Also create frozen CLIP
@@ -129,45 +354,39 @@ class VLPromptLearner(nn.Module):
         # These token vectors will be saved when in save_model(),
         # but they should be ignored in load_model() as we want to use
         # those computed using the current class names
-        self.register_buffer("token_prefix", embedding[:, :1, :])  # SOS
-        self.register_buffer("token_suffix", embedding[:, 1 + n_ctx:, :])  # CLS, EOS
 
         self.n_cls = n_cls
         self.n_ctx = n_ctx
         self.tokenized_prompts = tokenized_prompts  # torch.Tensor
         self.name_lens = name_lens
 
-    def construct_prompts(self, ctx, prefix, suffix, label=None):
-        # dim0 is either batch_size (during training) or n_cls (during testing)
-        # ctx: context tokens, with shape of (dim0, n_ctx, ctx_dim)
-        # prefix: the sos token, with shape of (n_cls, 1, ctx_dim)
-        # suffix: remaining tokens, with shape of (n_cls, *, ctx_dim)
 
-        if label is not None:
-            prefix = prefix[label]
-            suffix = suffix[label]
+    def construct_prompts(self, class_embeddings):
+        # Expand learnable tokens across all classes
+        ctx_prefix = self.ctx_prefix.unsqueeze(0).expand(self.n_cls, -1, -1)
+        ctx_suffix = self.ctx_suffix.unsqueeze(0).expand(self.n_cls, -1, -1)
+        ctx_attr   = self.ctx_attr.unsqueeze(0).expand(self.n_cls, -1, -1)
 
-        prompts = torch.cat(
-            [
-                prefix,  # (dim0, 1, dim)
-                ctx,  # (dim0, n_ctx, dim)
-                suffix,  # (dim0, *, dim)
-            ],
-            dim=1,
-        )
+        prompts = torch.cat([
+            self.token_sos.expand(self.n_cls, -1, -1),  # [SOS]
+            ctx_prefix,                                 # learnable prefix
+            class_embeddings,                           # class name tokens
+            ctx_suffix,                                 # learnable suffix
+            ctx_attr,                                   # learnable attribute tokens
+            self.token_eos.expand(self.n_cls, -1, -1),  # [EOS]
+        ], dim=1)
 
         return prompts
 
-    def forward(self):
-        ctx = self.ctx
-        if ctx.dim() == 2:
-            ctx = ctx.unsqueeze(0).expand(self.n_cls, -1, -1)
+    def forward(self, clip_model):
+        # Tokenize classnames and get embeddings
+        tokenized_classes = torch.cat([clip.tokenize(name) for name in self.classnames])
+        with torch.no_grad():
+            class_embeddings = clip_model.token_embedding(tokenized_classes).type(self.ctx_prefix.dtype)
+            class_embeddings = class_embeddings[:, 1:-1, :]  # strip SOS/EOS
 
-        prefix = self.token_prefix
-        suffix = self.token_suffix
-        prompts = self.construct_prompts(ctx, prefix, suffix)
+        return self.construct_prompts(class_embeddings)
 
-        return prompts
 
 
 class CustomCLIP(nn.Module):

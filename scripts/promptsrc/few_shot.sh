@@ -10,7 +10,7 @@ SHOTS=$2
 
 for SEED in 1 2 3
 do
-    DIR=output/${DATASET}/${TRAINER}/${CFG}_${SHOTS}shots/seed${SEED}
+    DIR=output_exp/${DATASET}/${TRAINER}/${CFG}_${SHOTS}shots/seed${SEED}
     if [ -d "$DIR" ]; then
         echo " The results exist at ${DIR}"
     else
